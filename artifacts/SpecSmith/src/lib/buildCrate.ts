@@ -8,7 +8,7 @@ import { compatibilityView } from './retail/partIdentity';
 
 interface Part { id: string; name: string; price_usd: number; brand?: string; [key: string]: unknown; }
 export interface CrateGpu extends Part, BuildFpsGpu { tier: number; tdp_watts: number; length_mm?: number; }
-export interface CrateCpu extends Part, BuildFpsCpu { tier: number; tdp_watts: number; socket: string; supported_ram: string[]; }
+export interface CrateCpu extends Part, BuildFpsCpu { tier: number; base_power_watts: number; max_turbo_power_watts: number | null; socket: string; supported_ram: string[]; }
 export interface CrateMotherboard extends Part { socket: string; supported_ram: string[]; form_factor?: string; }
 export interface CrateRam extends Part { type: string; }
 export interface CrateStorage extends Part { }
@@ -17,14 +17,32 @@ export interface CrateCase extends Part { motherboard_support?: string[]; gpu_cl
 export interface CrateCooler extends Part { type: string; height_mm?: number; max_tdp_watts?: number; socket_support?: string[]; }
 interface Game { id: string; name: string; gpu_bound?: number; base_fps: Record<string, Record<string, number>>; [key: string]: unknown; }
 
-const gpus = gpuData as CrateGpu[];
+const allGpus = gpuData as CrateGpu[];
 const cpus = cpuData as CrateCpu[];
-const motherboards = componentData.motherboards as CrateMotherboard[];
-const rams = componentData.ram as CrateRam[];
-const storages = componentData.storage as CrateStorage[];
-const psus = componentData.psus as CratePsu[];
-const cases = componentData.cases as CrateCase[];
-const coolers = componentData.coolers as CrateCooler[];
+const allMotherboards = componentData.motherboards as CrateMotherboard[];
+const allRams = componentData.ram as CrateRam[];
+const allStorages = componentData.storage as CrateStorage[];
+const allPsus = componentData.psus as CratePsu[];
+const allCases = componentData.cases as CrateCase[];
+const allCoolers = componentData.coolers as CrateCooler[];
+
+// A crate pull is presented as a buildable PC with "Build With This", so it
+// may only use parts the catalog audit lists as eligible. The eligibility
+// check is injected rather than imported, so the list stays out of this
+// page's initial JavaScript: the page loads it lazily and the content
+// pipeline passes it in directly. Until it is set, rolling refuses (fails
+// closed) rather than drawing from unaudited parts.
+let isEligible: ((id: string) => boolean) | null = null;
+
+export function setCrateEligibility(check: ((id: string) => boolean) | null): void {
+  isEligible = check;
+}
+
+function eligible<T extends { id: string }>(parts: T[]): T[] {
+  if (!isEligible) throw new Error('Build Crate eligibility has not been loaded; refusing to roll unaudited parts.');
+  const check = isEligible;
+  return parts.filter((part) => check(part.id));
+}
 const games = gamesData as Game[];
 
 export const SOCKETS = [...new Set(cpus.map(c => c.socket))];
@@ -125,7 +143,7 @@ export const CRATE_CATEGORY_ORDER: { key: 'motherboard' | 'cpu' | 'ram' | 'gpu' 
  * what tells you which platform you landed on. */
 export function rollMotherboard(): RolledPart<CrateMotherboard> & { socket: string } {
   const socket = SOCKETS[Math.floor(rng() * SOCKETS.length)];
-  const pool = motherboards.filter(m => m.socket === socket);
+  const pool = eligible(allMotherboards).filter(m => m.socket === socket);
   const { item, percentile } = pickWeighted(pool, m => m.price_usd);
   return { part: item, rarity: rarityFromPercentile(percentile), socket };
 }
@@ -137,26 +155,26 @@ export function rollMotherboard(): RolledPart<CrateMotherboard> & { socket: stri
 const PITY_MIN_TIER = 5;
 
 export function rollCpu(socket: string, pity = false): RolledPart<CrateCpu> {
-  let pool = cpus.filter(c => c.socket === socket);
+  let pool = eligible(cpus).filter(c => c.socket === socket);
   if (pity) pool = pool.filter(c => c.tier >= PITY_MIN_TIER);
   const { item, percentile } = pickWeighted(pool, c => c.tier);
   return { part: item, rarity: rarityFromPercentile(percentile) };
 }
 
 export function rollRam(ramType: string): RolledPart<CrateRam> {
-  const pool = rams.filter(r => r.type === ramType);
+  const pool = eligible(allRams).filter(r => r.type === ramType);
   const { item, percentile } = pickWeighted(pool, r => r.price_usd);
   return { part: item, rarity: rarityFromPercentile(percentile) };
 }
 
 export function rollGpu(pity = false): RolledPart<CrateGpu> {
-  const pool = pity ? gpus.filter(g => g.tier >= PITY_MIN_TIER) : gpus;
+  const pool = pity ? eligible(allGpus).filter(g => g.tier >= PITY_MIN_TIER) : eligible(allGpus);
   const { item, percentile } = pickWeighted(pool, g => g.tier);
   return { part: item, rarity: rarityFromPercentile(percentile) };
 }
 
 export function rollStorage(): RolledPart<CrateStorage> {
-  const { item, percentile } = pickWeighted(storages, s => s.price_usd);
+  const { item, percentile } = pickWeighted(eligible(allStorages), s => s.price_usd);
   return { part: item, rarity: rarityFromPercentile(percentile) };
 }
 
@@ -169,7 +187,7 @@ export function rollStorage(): RolledPart<CrateStorage> {
 // crate pull can never land on so much as a warning, only a real range of
 // how good the parts inside are.
 export function rollCase(motherboardFormFactor?: string, gpuLengthMm?: number): RolledPart<CrateCase> {
-  let pool = cases;
+  let pool = eligible(allCases);
   if (motherboardFormFactor) {
     pool = pool.filter(c => !c.motherboard_support || c.motherboard_support.includes(motherboardFormFactor));
   }
@@ -181,7 +199,7 @@ export function rollCase(motherboardFormFactor?: string, gpuLengthMm?: number): 
 }
 
 export function rollCooler(caseClearanceMm?: number, cpuTdpWatts?: number, cpuSocket?: string): RolledPart<CrateCooler> {
-  let pool = coolers;
+  let pool = eligible(allCoolers);
   if (caseClearanceMm) {
     // AIOs have no height_mm (low-profile pump/radiator, not a tower), so
     // they always clear regardless of case clearance — only air coolers
@@ -201,7 +219,7 @@ export function rollCooler(caseClearanceMm?: number, cpuTdpWatts?: number, cpuSo
 }
 
 export function rollPsu(gpuTdpWatts?: number, cpuTdpWatts?: number): RolledPart<CratePsu> {
-  let pool = psus;
+  let pool = eligible(allPsus);
   if (gpuTdpWatts !== undefined && cpuTdpWatts !== undefined) {
     const required = (gpuTdpWatts + cpuTdpWatts + 100) * 1.1;
     pool = pool.filter(p => p.wattage >= required);
@@ -213,14 +231,14 @@ export function rollPsu(gpuTdpWatts?: number, cpuTdpWatts?: number): RolledPart<
 // Pools exposed so the UI can build a spinning reel of "candidates" for the
 // crate currently being opened — filler flavor for the animation, not used
 // for the actual roll (that already happened by the time the reel spins).
-export function getMotherboardPool(): CrateMotherboard[] { return motherboards; }
-export function getCpuPool(socket: string): CrateCpu[] { return cpus.filter(c => c.socket === socket); }
-export function getRamPool(type: string): CrateRam[] { return rams.filter(r => r.type === type); }
-export function getGpuPool(): CrateGpu[] { return gpus; }
-export function getStoragePool(): CrateStorage[] { return storages; }
-export function getCasePool(): CrateCase[] { return cases; }
-export function getCoolerPool(): CrateCooler[] { return coolers; }
-export function getPsuPool(): CratePsu[] { return psus; }
+export function getMotherboardPool(): CrateMotherboard[] { return eligible(allMotherboards); }
+export function getCpuPool(socket: string): CrateCpu[] { return eligible(cpus).filter(c => c.socket === socket); }
+export function getRamPool(type: string): CrateRam[] { return eligible(allRams).filter(r => r.type === type); }
+export function getGpuPool(): CrateGpu[] { return eligible(allGpus); }
+export function getStoragePool(): CrateStorage[] { return eligible(allStorages); }
+export function getCasePool(): CrateCase[] { return eligible(allCases); }
+export function getCoolerPool(): CrateCooler[] { return eligible(allCoolers); }
+export function getPsuPool(): CratePsu[] { return eligible(allPsus); }
 
 function averageFpsForBuild(gpu: CrateGpu, cpu: CrateCpu): number {
   const total = games.reduce((sum, g) => sum + estimateFpsForBuild(gpu, cpu, g, '1440p', 'high').estimated, 0);

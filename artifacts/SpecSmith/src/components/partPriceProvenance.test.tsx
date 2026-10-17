@@ -18,7 +18,7 @@
 
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import PartCard from './PartCard';
 import PartSelector from './PartSelector';
@@ -45,6 +45,11 @@ import { ToastProvider } from '../context/ToastContext';
 import Builder from '../pages/Builder';
 import UpgradeCalculator from '../pages/UpgradeCalculator';
 import UpgradeCalculatorCpu from '../pages/UpgradeCalculatorCpu';
+import { preloadCatalogLifecycle } from '../hooks/useCatalogLifecycle';
+import { isRecommendable } from '../lib/catalogLifecycle';
+
+// Recommendations wait for the eligibility list (fail closed); load it first.
+beforeAll(() => preloadCatalogLifecycle());
 
 const LISTING = rtx5070Listing(false);
 const CHECKED = Date.parse(LISTING.fetchedAt);
@@ -597,7 +602,9 @@ describe('imported recommendations, rendered in the retail builder', () => {
   it('a peripheral recommendation is "Estimated" with no date; a GPU one keeps its date', async () => {
     const gpu = (gpuData as { id: string; price_usd: number }[])[0];
     const monitor = (peripheralData as unknown as { monitors: { id: string; price_usd: number }[] }).monitors[0];
-    const keyboard = (peripheralData as unknown as { keyboards: { id: string }[] }).keyboards[0];
+    // The first keyboard the catalog audit (#190) lists as eligible: an
+    // ineligible part is never presented as a recommended model.
+    const keyboard = (peripheralData as unknown as { keyboards: { id: string }[] }).keyboards.find((k) => isRecommendable(k.id))!;
     render(
       <MemoryRouter initialEntries={[`/builder?gpu=${gpu.id}&monitor=${monitor.id}&keyboard=${keyboard.id}`]}>
         <ToastProvider>

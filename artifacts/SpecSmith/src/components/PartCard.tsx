@@ -19,6 +19,10 @@ interface PartCardProps {
   sponsored?: boolean;
   recommended?: boolean;
   badge?: 'best-value' | 'best-performance';
+  /** Catalog audit label, e.g. "Older generation" or "Exact variant unconfirmed". */
+  catalogNotice?: string | null;
+  /** False hides retailer links: a buy link is a purchase recommendation. */
+  retailLinks?: boolean;
   specs: { label: string; value: string }[];
   tier?: number;
   showShopping?: boolean;
@@ -60,7 +64,7 @@ const badgeStyles: Record<'best-value' | 'best-performance', { label: string; ba
 };
 
 export default function PartCard({
-  id, name, image, searchQuery, price, affiliateUrl, selected, sponsored, recommended, badge, specs, tier,
+  id, name, image, searchQuery, price, affiliateUrl, selected, sponsored, recommended, badge, catalogNotice, retailLinks = true, specs, tier,
   showShopping = true, onSelect
 }: PartCardProps) {
   const query = searchQuery ?? name;
@@ -133,6 +137,12 @@ export default function PartCard({
           </div>
         )}
 
+        {catalogNotice && (
+          <p className="mb-2 text-[10px] font-semibold" style={{ color: 'var(--ff-text-2)' }}>
+            {catalogNotice}
+          </p>
+        )}
+
         {/* Header */}
         <div className="flex items-start justify-between gap-2 mb-3">
           {image && (
@@ -187,7 +197,7 @@ export default function PartCard({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1.5" style={{ pointerEvents: 'auto' }}>
+          {retailLinks && <div className="flex items-center gap-1.5" style={{ pointerEvents: 'auto' }}>
             {!affiliateUrl && (
               <a
                 href={getAffiliateUrl(query)}
@@ -209,7 +219,7 @@ export default function PartCard({
             >
               {affiliateUrl ? 'View at Newegg' : 'Newegg'} <ExternalLink size={10} />
             </a>
-          </div>
+          </div>}
         </div>}
       </div>
     </motion.div>

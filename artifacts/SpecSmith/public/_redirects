@@ -1,0 +1,10 @@
+# Permanent redirects for retired public routes. Cloudflare applies these
+# before serving static assets. Every target must be a live prerendered route
+# (src/lib/retiredRoutes.test.ts checks this).
+#
+# RTX 4050: NVIDIA never released a desktop RTX 4050 (laptop GPU only), so the
+# pages comparing or upgrading from one described a product a shopper cannot
+# buy. Retired 2026-10-16 (catalog audit, issue #190).
+/vs/rtx-4050-vs-arc-b570  /vs/arc-b570-vs-rtx-5050  301
+/vs/rtx-5050-vs-rtx-4050  /vs/arc-b570-vs-rtx-5050  301
+/upgrade/rtx-4050         /upgrade                  301

@@ -22,7 +22,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -33,6 +33,10 @@ import { ToastProvider } from '../context/ToastContext';
 import { PRICES_UPDATED } from '../lib/prices';
 import { EMPTY_FILTERS, filterAndSort } from '../lib/retail/retailShopping';
 import Builder from './Builder';
+import { preloadCatalogLifecycle } from '../hooks/useCatalogLifecycle';
+
+// Recommendations wait for the eligibility list (fail closed); load it first.
+beforeAll(() => preloadCatalogLifecycle());
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const published = publishedCatalog as any;
@@ -40,7 +44,8 @@ const parts = (published.parts ?? published) as any[];
 const budget = (prebuilts as any[]).find((p) => p.id === 'budget-beast')!;
 const PERIPHERALS = {
   monitor: 'lg-27gp850',
-  keyboard: 'logi-gprox',
+  // Eligible keyboard; 'logi-gprox' is needs-review in the catalog audit (#190).
+  keyboard: 'corsair-k100',
   mouse: 'logi-g502xplus',
   headset: 'steelseries-arctis-nova-pro',
 };

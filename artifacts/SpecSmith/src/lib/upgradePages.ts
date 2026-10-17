@@ -27,7 +27,6 @@ export const UPGRADE_PAGES: UpgradePage[] = [
   { slug: 'rtx-4060-ti-16gb', gpuId: 'rtx4060ti16' },
   { slug: 'rtx-4060-ti', gpuId: 'rtx4060ti' },
   { slug: 'rtx-4060', gpuId: 'rtx4060' },
-  { slug: 'rtx-4050', gpuId: 'rtx4050' },
   { slug: 'rtx-3090-ti', gpuId: 'rtx3090ti' },
   { slug: 'rtx-3090', gpuId: 'rtx3090' },
   { slug: 'rtx-3080-ti', gpuId: 'rtx3080ti' },

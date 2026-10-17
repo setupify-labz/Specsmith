@@ -1,6 +1,7 @@
 import componentData from '../data/components.json';
 import peripheralData from '../data/peripherals.json';
 import type { RouteMeta } from './seo';
+import { recommendable } from './catalogLifecycle';
 
 export interface GuideItem {
   id: string;
@@ -57,24 +58,33 @@ function priciest<T extends GuideItem>(items: T[]): T {
 const ramEnriched = ram.map(r => ({ ...r, cost_per_gb: Math.round((r.price_usd / r.capacity_gb) * 100) / 100 }));
 const storageEnriched = storage.map(s => ({ ...s, cost_per_tb: Math.round((s.price_usd / s.capacity_tb) * 100) / 100 }));
 
-const ddr5 = ramEnriched.filter(r => r.type === 'DDR5');
-const ddr4 = ramEnriched.filter(r => r.type === 'DDR4');
-const ramBudget = cheapest(ramEnriched);
-const ramDdr5Pick = ddr5.length > 0 ? cheapest(ddr5) : ramEnriched[0];
-const ramPremium = priciest(ramEnriched);
-const ramBestValue = ramEnriched.reduce((best, r) => (r.cost_per_gb < best.cost_per_gb ? r : best), ramEnriched[0]);
+// Picks are buying recommendations, so they come only from parts the catalog
+// audit lists as eligible. The comparison tables below still list every
+// tracked part.
+const ramPicks = recommendable(ramEnriched);
+const storagePicks = recommendable(storageEnriched);
+const psuPicks = recommendable(psus);
+const casePicks = recommendable(cases);
+const coolerPicks = recommendable(coolers);
 
-const storageBudget = cheapest(storageEnriched);
-const nvme = storageEnriched.filter(s => s.type.startsWith('NVMe'));
-const storageFastest = nvme.length > 0 ? nvme.reduce((max, s) => (s.speed_mbs > max.speed_mbs ? s : max), nvme[0]) : priciest(storageEnriched);
-const storageBestValue = storageEnriched.reduce((best, s) => (s.cost_per_tb < best.cost_per_tb ? s : best), storageEnriched[0]);
+const ddr5 = ramPicks.filter(r => r.type === 'DDR5');
+const ddr4 = ramPicks.filter(r => r.type === 'DDR4');
+const ramBudget = cheapest(ramPicks);
+const ramDdr5Pick = ddr5.length > 0 ? cheapest(ddr5) : ramPicks[0];
+const ramPremium = priciest(ramPicks);
+const ramBestValue = ramPicks.reduce((best, r) => (r.cost_per_gb < best.cost_per_gb ? r : best), ramPicks[0]);
 
-const psuSorted = [...psus].sort((a, b) => a.wattage - b.wattage);
+const storageBudget = cheapest(storagePicks);
+const nvme = storagePicks.filter(s => s.type.startsWith('NVMe'));
+const storageFastest = nvme.length > 0 ? nvme.reduce((max, s) => (s.speed_mbs > max.speed_mbs ? s : max), nvme[0]) : priciest(storagePicks);
+const storageBestValue = storagePicks.reduce((best, s) => (s.cost_per_tb < best.cost_per_tb ? s : best), storagePicks[0]);
+
+const psuSorted = [...psuPicks].sort((a, b) => a.wattage - b.wattage);
 const psuBudget = psuSorted[0];
 const psuMid = psuSorted[Math.floor(psuSorted.length / 2)];
 const psuHigh = psuSorted[psuSorted.length - 1];
 
-const casesSorted = [...cases].sort((a, b) => a.price_usd - b.price_usd);
+const casesSorted = [...casePicks].sort((a, b) => a.price_usd - b.price_usd);
 const caseBudget = casesSorted[0];
 const caseMid = casesSorted[Math.floor(casesSorted.length / 2)];
 const casePremium = casesSorted[casesSorted.length - 1];
@@ -84,29 +94,34 @@ const keyboards = peripheralData.keyboards as (GuideItem & { switch_type: string
 const mice = peripheralData.mice as (GuideItem & { dpi_max: number; weight_grams: number; wireless: boolean })[];
 const headsets = peripheralData.headsets as (GuideItem & { wireless: boolean; noise_cancelling: boolean; surround_sound: string })[];
 
-const monitorBudget = cheapest(monitors);
-const monitorFastest = monitors.reduce((max, m) => (m.refresh_rate_hz > max.refresh_rate_hz ? m : max), monitors[0]);
-const fourK = monitors.filter(m => m.resolution === '4K');
-const monitor4k = fourK.length > 0 ? cheapest(fourK) : priciest(monitors);
+const monitorPicks = recommendable(monitors);
+const keyboardPicks = recommendable(keyboards);
+const mousePicks = recommendable(mice);
+const headsetPicks = recommendable(headsets);
 
-const keyboardBudget = cheapest(keyboards);
-const wirelessKeyboards = keyboards.filter(k => k.wireless);
-const keyboardWireless = wirelessKeyboards.length > 0 ? cheapest(wirelessKeyboards) : priciest(keyboards);
+const monitorBudget = cheapest(monitorPicks);
+const monitorFastest = monitorPicks.reduce((max, m) => (m.refresh_rate_hz > max.refresh_rate_hz ? m : max), monitorPicks[0]);
+const fourK = monitorPicks.filter(m => m.resolution === '4K');
+const monitor4k = fourK.length > 0 ? cheapest(fourK) : priciest(monitorPicks);
 
-const mouseBudget = cheapest(mice);
-const mouseLight = mice.reduce((min, m) => (m.weight_grams < min.weight_grams ? m : min), mice[0]);
-const mousePremium = priciest(mice);
+const keyboardBudget = cheapest(keyboardPicks);
+const wirelessKeyboards = keyboardPicks.filter(k => k.wireless);
+const keyboardWireless = wirelessKeyboards.length > 0 ? cheapest(wirelessKeyboards) : priciest(keyboardPicks);
 
-const headsetBudget = cheapest(headsets);
-const wirelessHeadsets = headsets.filter(h => h.wireless);
-const headsetWireless = wirelessHeadsets.length > 0 ? cheapest(wirelessHeadsets) : priciest(headsets);
-const headsetPremium = priciest(headsets);
+const mouseBudget = cheapest(mousePicks);
+const mouseLight = mousePicks.reduce((min, m) => (m.weight_grams < min.weight_grams ? m : min), mousePicks[0]);
+const mousePremium = priciest(mousePicks);
 
-const airCoolers = coolers.filter(c => c.type === 'Air');
-const aioCoolers = coolers.filter(c => c.type.includes('AIO'));
-const coolerAirBudget = airCoolers.length > 0 ? cheapest(airCoolers) : cheapest(coolers);
-const coolerAioBudget = aioCoolers.length > 0 ? cheapest(aioCoolers) : priciest(coolers);
-const coolerAioPremium = aioCoolers.length > 0 ? priciest(aioCoolers) : priciest(coolers);
+const headsetBudget = cheapest(headsetPicks);
+const wirelessHeadsets = headsetPicks.filter(h => h.wireless);
+const headsetWireless = wirelessHeadsets.length > 0 ? cheapest(wirelessHeadsets) : priciest(headsetPicks);
+const headsetPremium = priciest(headsetPicks);
+
+const airCoolers = coolerPicks.filter(c => c.type === 'Air');
+const aioCoolers = coolerPicks.filter(c => c.type.includes('AIO'));
+const coolerAirBudget = airCoolers.length > 0 ? cheapest(airCoolers) : cheapest(coolerPicks);
+const coolerAioBudget = aioCoolers.length > 0 ? cheapest(aioCoolers) : priciest(coolerPicks);
+const coolerAioPremium = aioCoolers.length > 0 ? priciest(aioCoolers) : priciest(coolerPicks);
 
 export const COMPONENT_GUIDES: ComponentGuide[] = [
   {

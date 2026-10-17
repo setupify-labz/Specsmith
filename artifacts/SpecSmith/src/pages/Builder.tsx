@@ -44,6 +44,8 @@ import {
 import CatalogFailureNotice from '../components/builder/CatalogFailureNotice';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
 import { trackProductEvent } from '../lib/productAnalytics';
+import { useCatalogLifecycle } from '../hooks/useCatalogLifecycle';
+import { eligibleRecommendations } from '../lib/catalogLifecycleCore';
 
 const FpsEstimator = lazy(() => import('../components/FpsEstimator'));
 const VerifiedBenchmarkPanel = lazy(() => import('../components/VerifiedBenchmarkPanel'));
@@ -83,7 +85,7 @@ const CATALOGUE_ESTIMATE = {
 } as const;
 
 interface GPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; vram_gb: number; tdp_watts: number; architecture: string; release_year: number; benchmark_score: number; gpu_multiplier: number; sponsored?: boolean; [key: string]: unknown; }
-interface CPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; cores: number; threads: number; base_ghz: number; boost_ghz: number; tdp_watts: number; socket: string; supported_ram: string[]; release_year: number; benchmark_score: number; cpu_multiplier: number; sponsored?: boolean; [key: string]: unknown; }
+interface CPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; cores: number; threads: number; base_ghz: number; boost_ghz: number; base_power_watts: number; max_turbo_power_watts: number | null; socket: string; supported_ram: string[]; release_year: number; benchmark_score: number; cpu_multiplier: number; sponsored?: boolean; [key: string]: unknown; }
 interface Motherboard { id: string; name: string; brand: string; price_usd: number; socket: string; supported_ram: string[]; form_factor: string; sponsored?: boolean; [key: string]: unknown; }
 interface RAM { id: string; name: string; brand: string; price_usd: number; type: string; capacity_gb: number; speed_mhz: number; sponsored?: boolean; [key: string]: unknown; }
 interface Storage { id: string; name: string; brand: string; price_usd: number; type: string; capacity_tb: number; speed_mbs: number; sponsored?: boolean; [key: string]: unknown; }
@@ -147,6 +149,9 @@ export default function Builder() {
   const [peripheralsOpen, setPeripheralsOpen] = useState(false);
   const { view: affiliateCatalog, retry: retryCatalog } = useAffiliatePartCatalog();
   const processedImages = useProductImageManifest();
+  // Recommended highlights only ever name eligible parts; none until loaded.
+  const catalogLifecycle = useCatalogLifecycle();
+  const recommendable = <T extends { id: string }>(parts: T[]): T[] => catalogLifecycle?.recommendable(parts) ?? [];
 
   const retailByCategory = useMemo(() => {
     const grouped = new Map<RetailPartCategory, AffiliatePart[]>();
@@ -349,9 +354,11 @@ export default function Builder() {
    * SKUs at different prices, and choosing one on the shopper's behalf would
    * invent a purchase decision — see importedBuild.ts.
    */
+  // Only eligible parts may be presented as recommended models, and none at
+  // all until the eligibility list has loaded (fail closed).
   const imported = useMemo(
-    () => importedRecommendations(build, retailIds, canonicalById),
-    [build, retailIds, canonicalById],
+    () => eligibleRecommendations(importedRecommendations(build, retailIds, canonicalById), catalogLifecycle),
+    [build, retailIds, canonicalById, catalogLifecycle],
   );
 
   /**
@@ -509,26 +516,32 @@ export default function Builder() {
   const monitorWarningCount = warnings.filter(w => w.id.startsWith('monitor-')).length;
 
   const corePartsList = [
-    selectedGpu     && { label: 'GPU',         name: selectedGpu.name,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.gpu(selectedGpu) } as SummaryPrice, affiliateUrl: selectedGpu.affiliateUrl as string | undefined },
-    selectedCpu     && { label: 'CPU',         name: selectedCpu.name,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.cpu(selectedCpu) } as SummaryPrice, affiliateUrl: selectedCpu.affiliateUrl as string | undefined },
-    selectedMb      && { label: 'Motherboard', name: selectedMb.name,      price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.motherboard(selectedMb) } as SummaryPrice, affiliateUrl: selectedMb.affiliateUrl as string | undefined },
-    selectedRam     && { label: 'RAM',         name: selectedRam.name,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.ram(selectedRam) } as SummaryPrice, affiliateUrl: selectedRam.affiliateUrl as string | undefined },
-    selectedStorage && { label: 'Storage',     name: selectedStorage.name, price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.storage(selectedStorage) } as SummaryPrice, affiliateUrl: selectedStorage.affiliateUrl as string | undefined },
-    selectedPsu     && { label: 'PSU',         name: selectedPsu.name,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.psu(selectedPsu) } as SummaryPrice, affiliateUrl: selectedPsu.affiliateUrl as string | undefined },
-    selectedCase    && { label: 'Case',        name: selectedCase.name,    price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.case(selectedCase) } as SummaryPrice, affiliateUrl: selectedCase.affiliateUrl as string | undefined },
-    selectedCooler  && { label: 'Cooler',      name: selectedCooler.name,  price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.cooler(selectedCooler) } as SummaryPrice, affiliateUrl: selectedCooler.affiliateUrl as string | undefined },
-  ].filter(Boolean) as { label: string; name: string; price: SummaryPrice; affiliateUrl?: string }[];
+    selectedGpu     && { label: 'GPU',         name: selectedGpu.name, id: selectedGpu.id as string,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.gpu(selectedGpu) } as SummaryPrice, affiliateUrl: selectedGpu.affiliateUrl as string | undefined },
+    selectedCpu     && { label: 'CPU',         name: selectedCpu.name, id: selectedCpu.id as string,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.cpu(selectedCpu) } as SummaryPrice, affiliateUrl: selectedCpu.affiliateUrl as string | undefined },
+    selectedMb      && { label: 'Motherboard', name: selectedMb.name, id: selectedMb.id as string,      price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.motherboard(selectedMb) } as SummaryPrice, affiliateUrl: selectedMb.affiliateUrl as string | undefined },
+    selectedRam     && { label: 'RAM',         name: selectedRam.name, id: selectedRam.id as string,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.ram(selectedRam) } as SummaryPrice, affiliateUrl: selectedRam.affiliateUrl as string | undefined },
+    selectedStorage && { label: 'Storage',     name: selectedStorage.name, id: selectedStorage.id as string, price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.storage(selectedStorage) } as SummaryPrice, affiliateUrl: selectedStorage.affiliateUrl as string | undefined },
+    selectedPsu     && { label: 'PSU',         name: selectedPsu.name, id: selectedPsu.id as string,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.psu(selectedPsu) } as SummaryPrice, affiliateUrl: selectedPsu.affiliateUrl as string | undefined },
+    selectedCase    && { label: 'Case',        name: selectedCase.name, id: selectedCase.id as string,    price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.case(selectedCase) } as SummaryPrice, affiliateUrl: selectedCase.affiliateUrl as string | undefined },
+    selectedCooler  && { label: 'Cooler',      name: selectedCooler.name, id: selectedCooler.id as string,  price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.cooler(selectedCooler) } as SummaryPrice, affiliateUrl: selectedCooler.affiliateUrl as string | undefined },
+  ].filter(Boolean) as { label: string; name: string; id: string; price: SummaryPrice; affiliateUrl?: string }[];
 
   const peripheralPartsList = [
-    selectedMonitor  && { label: 'Monitor',  name: selectedMonitor.name,  price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.monitor(selectedMonitor) } as SummaryPrice, affiliateUrl: selectedMonitor.affiliateUrl as string | undefined },
-    selectedKeyboard && { label: 'Keyboard', name: selectedKeyboard.name, price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.keyboard(selectedKeyboard) } as SummaryPrice, affiliateUrl: selectedKeyboard.affiliateUrl as string | undefined },
-    selectedMouse    && { label: 'Mouse',    name: selectedMouse.name,    price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.mouse(selectedMouse) } as SummaryPrice, affiliateUrl: selectedMouse.affiliateUrl as string | undefined },
-    selectedHeadset  && { label: 'Headset',  name: selectedHeadset.name,  price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.headset(selectedHeadset) } as SummaryPrice, affiliateUrl: selectedHeadset.affiliateUrl as string | undefined },
-  ].filter(Boolean) as { label: string; name: string; price: SummaryPrice; affiliateUrl?: string }[];
+    selectedMonitor  && { label: 'Monitor',  name: selectedMonitor.name, id: selectedMonitor.id as string,  price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.monitor(selectedMonitor) } as SummaryPrice, affiliateUrl: selectedMonitor.affiliateUrl as string | undefined },
+    selectedKeyboard && { label: 'Keyboard', name: selectedKeyboard.name, id: selectedKeyboard.id as string, price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.keyboard(selectedKeyboard) } as SummaryPrice, affiliateUrl: selectedKeyboard.affiliateUrl as string | undefined },
+    selectedMouse    && { label: 'Mouse',    name: selectedMouse.name, id: selectedMouse.id as string,    price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.mouse(selectedMouse) } as SummaryPrice, affiliateUrl: selectedMouse.affiliateUrl as string | undefined },
+    selectedHeadset  && { label: 'Headset',  name: selectedHeadset.name, id: selectedHeadset.id as string,  price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.headset(selectedHeadset) } as SummaryPrice, affiliateUrl: selectedHeadset.affiliateUrl as string | undefined },
+  ].filter(Boolean) as { label: string; name: string; id: string; price: SummaryPrice; affiliateUrl?: string }[];
 
+  // Retailer links in the summary follow the catalog audit: a verified listing
+  // keeps its link, a catalogue part gets one only once listed as eligible.
+  const withRetailLinks = <T extends { id: string; affiliateUrl?: string }>(part: T) => ({
+    ...part,
+    retailLinks: Boolean(part.affiliateUrl) || (catalogLifecycle?.isRecommendable(part.id) ?? false),
+  });
   const summaryParts = [
-    ...corePartsList,
-    ...peripheralPartsList,
+    ...corePartsList.map(withRetailLinks),
+    ...peripheralPartsList.map(withRetailLinks),
     ...customParts.map(cp => ({ label: 'Custom', name: cp.name, price: { kind: 'user-entered', amount: cp.price } as SummaryPrice, customId: cp.id })),
   ];
   // The same summary the panel shows, so the saved figure and the displayed
@@ -569,7 +582,7 @@ export default function Builder() {
     // Highlight top GPUs
     if (selectedCpu) {
       const top3 = typeof selectedCpu.benchmark_score === 'number'
-        ? gpus.filter(g => g.benchmark_score >= selectedCpu.benchmark_score * 0.72).slice(0, 3).map(g => g.id)
+        ? recommendable(gpus).filter(g => g.benchmark_score >= selectedCpu.benchmark_score * 0.72).slice(0, 3).map(g => g.id)
         : [];
       setRecommendedIds(top3);
       setTimeout(() => setRecommendedIds([]), 3500);
@@ -578,7 +591,7 @@ export default function Builder() {
   const handleScrollToCpu = () => {
     cpuSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     if (selectedGpu) {
-      const top3 = cpus.filter(c => c.benchmark_score >= selectedGpu.benchmark_score / 1.4).slice(0, 3).map(c => c.id);
+      const top3 = recommendable(cpus).filter(c => c.benchmark_score >= selectedGpu.benchmark_score / 1.4).slice(0, 3).map(c => c.id);
       setRecommendedIds(top3);
       setTimeout(() => setRecommendedIds([]), 3500);
     }

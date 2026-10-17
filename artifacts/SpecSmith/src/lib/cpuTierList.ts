@@ -1,5 +1,6 @@
 import cpuData from '../data/cpus.json';
 import { fpsPer100, type MatchupCpu } from './matchups';
+import { isRecommendable } from './catalogLifecycle';
 
 const cpus = cpuData as MatchupCpu[];
 
@@ -56,8 +57,11 @@ export function getCpuTiers(): Tier[] {
     const members = withValue
       .filter(c => tierFor(c.cpu.benchmark_score) === id)
       .sort((a, b) => b.cpu.price_usd - a.cpu.price_usd);
-    const bestValueId = members.length
-      ? members.reduce((best, c) => (c.valuePer100 > best.valuePer100 ? c : best), members[0]).cpu.id
+    // The best-value badge is a recommendation, so only eligible parts can win
+    // it; an unaudited or ineligible part never does (fails closed).
+    const contenders = members.filter(c => isRecommendable(c.cpu.id));
+    const bestValueId = contenders.length
+      ? contenders.reduce((best, c) => (c.valuePer100 > best.valuePer100 ? c : best), contenders[0]).cpu.id
       : null;
     return {
       id,

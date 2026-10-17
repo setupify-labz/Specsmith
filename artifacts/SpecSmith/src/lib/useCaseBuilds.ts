@@ -2,16 +2,20 @@ import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import type { RouteMeta } from './seo';
 import { SITE_URL } from './seo';
+import { recommendable } from './catalogLifecycle';
 
 interface Gpu { id: string; name: string; brand: string; price_usd: number; vram_gb: number; benchmark_score: number; }
-interface Cpu { id: string; name: string; brand: string; price_usd: number; cores: number; threads: number; benchmark_score: number; }
+interface Cpu { id: string; name: string; brand: string; price_usd: number; cores: number; threads: number; benchmark_score: number; integrated_graphics: string | null; }
 
-const gpus = gpuData as Gpu[];
-const cpus = cpuData as Cpu[];
+// These are purchase recommendations, so only parts the catalog audit lists
+// as eligible enter the pick pools.
+const gpus = recommendable(gpuData as Gpu[]);
+const cpus = recommendable(cpuData as Cpu[]);
 
 export interface UseCaseTier {
   label: string;
-  maxGpuPrice: number;
+  /** null = no discrete GPU: the build uses the CPU's integrated graphics. */
+  maxGpuPrice: number | null;
   maxCpuPrice: number;
 }
 
@@ -126,22 +130,24 @@ export const USE_CASES: UseCase[] = [
     slug: 'home-office',
     title: 'Best PC Build for Home Office / Productivity',
     shortTitle: 'Home Office',
-    intro: 'Spreadsheets, video calls, browser tabs, and document editing barely touch the GPU at all — even the cheapest discrete card we track drives multiple high-resolution monitors without breaking a sweat, far beyond what integrated graphics alone can do. That means the smart move for a productivity build is to spend as little as possible on GPU and put the budget into CPU cores instead, since core count is what actually determines how many apps you can run smoothly at once.',
-    criteria: 'GPU picked as the cheapest card in budget — raw gaming performance is irrelevant here, so there\'s no reason to pay more than the entry price. CPU picked by highest core count in budget (ties broken by benchmark score), since multitasking headroom is what matters for office work.',
+    intro: 'Spreadsheets, video calls, browser tabs, and document editing barely touch the GPU. The graphics built into many modern CPUs handle this work, including more than one monitor, without a separate graphics card. So the two everyday tiers here skip the graphics card and pick a CPU with built-in graphics, putting the budget into CPU cores instead, since core count decides how many apps run smoothly at once. The top tier adds an entry-level graphics card for light creative work.',
+    criteria: 'Everyday tiers: no graphics card. The CPU is the one with the most cores in budget that has integrated graphics (ties broken by benchmark score). Top tier: the cheapest eligible graphics card in budget, plus the CPU with the most cores in budget.',
     tiers: [
-      { label: 'Everyday Office', maxGpuPrice: 200, maxCpuPrice: 200 },
-      { label: 'Power Multitasker', maxGpuPrice: 250, maxCpuPrice: 400 },
+      // Ordinary office work runs on the CPU's integrated graphics, so these
+      // tiers have no discrete GPU (maxGpuPrice: null).
+      { label: 'Everyday Office', maxGpuPrice: null, maxCpuPrice: 200 },
+      { label: 'Power Multitasker', maxGpuPrice: null, maxCpuPrice: 400 },
       { label: 'Hybrid Work + Light Creative', maxGpuPrice: 350, maxCpuPrice: 600 },
     ],
     gpuStrategy: 'budget',
     faqs: [
       {
-        title: 'Why does this guide pick the cheapest GPU instead of the best one in budget?',
-        content: 'Office work — browsers, spreadsheets, video calls, documents — doesn\'t use the GPU for anything demanding, so a $1,000 flagship card drives a monitor exactly as well as a $140 entry-level one. Spending less on the GPU frees up more of the budget for the CPU, RAM, and storage, which is where a productivity PC actually feels faster.',
+        title: 'Why do the everyday tiers have no graphics card?',
+        content: 'Office work (browsers, spreadsheets, video calls, documents) asks almost nothing of the GPU. The integrated graphics built into these CPUs handle it, so a separate card would add cost without making the PC feel faster. That money goes to the CPU, RAM and storage instead. Two things to check: the CPU must have integrated graphics (Intel models ending in F and Ryzen 5000/3000 desktop chips do not), and your monitors connect to the motherboard\'s HDMI or DisplayPort outputs, so make sure it has the ports you need.',
       },
       {
-        title: 'Wouldn\'t integrated graphics be enough, so I don\'t need a GPU at all?',
-        content: 'For light office work, often yes — many CPUs include integrated graphics capable of driving a couple of monitors. This guide assumes you want a discrete card anyway (for a wider range of motherboard/CPU combos, or headroom for the occasional game or GPU-accelerated task); if your CPU has integrated graphics and you\'re certain you\'ll never need more, you can skip the GPU line entirely and put that budget toward the CPU or RAM.',
+        title: 'When should an office PC get a graphics card?',
+        content: 'When the work goes beyond office tasks: photo or video editing, GPU-accelerated apps, more monitors than the motherboard has outputs for, or occasional gaming. That is what the top tier is for. It adds the cheapest eligible graphics card in its budget, because raw gaming speed still is not the goal.',
       },
       {
         title: 'Why does CPU core count matter so much for office multitasking?',
@@ -155,7 +161,8 @@ export function getUseCase(slug: string): UseCase | undefined {
   return USE_CASES.find(u => u.slug === slug);
 }
 
-function pickGpu(strategy: UseCase['gpuStrategy'], maxPrice: number): Gpu {
+function pickGpu(strategy: UseCase['gpuStrategy'], maxPrice: number | null): Gpu | null {
+  if (maxPrice === null) return null;
   const pool = gpus.filter(g => g.price_usd <= maxPrice);
   if (strategy === 'encode') {
     const nvidia = pool.filter(g => g.brand === 'NVIDIA').sort((a, b) => b.benchmark_score - a.benchmark_score);
@@ -168,14 +175,15 @@ function pickGpu(strategy: UseCase['gpuStrategy'], maxPrice: number): Gpu {
   return [...pool].sort((a, b) => (b.vram_gb - a.vram_gb) || (b.benchmark_score - a.benchmark_score))[0];
 }
 
-function pickCpu(maxPrice: number): Cpu {
-  const pool = cpus.filter(c => c.price_usd <= maxPrice);
+function pickCpu(maxPrice: number, needsIntegratedGraphics: boolean): Cpu {
+  const pool = cpus.filter(c => c.price_usd <= maxPrice && (!needsIntegratedGraphics || c.integrated_graphics !== null));
   return [...pool].sort((a, b) => (b.cores - a.cores) || (b.benchmark_score - a.benchmark_score))[0];
 }
 
 export interface TierPick {
   tier: UseCaseTier;
-  gpu: Gpu;
+  /** null when the tier uses the CPU's integrated graphics. */
+  gpu: Gpu | null;
   cpu: Cpu;
 }
 
@@ -183,7 +191,7 @@ export function getTierPicks(useCase: UseCase): TierPick[] {
   return useCase.tiers.map(tier => ({
     tier,
     gpu: pickGpu(useCase.gpuStrategy, tier.maxGpuPrice),
-    cpu: pickCpu(tier.maxCpuPrice),
+    cpu: pickCpu(tier.maxCpuPrice, tier.maxGpuPrice === null),
   }));
 }
 
@@ -202,7 +210,11 @@ export interface TierComparison extends TierPick {
   stepUp?: TierStepUp;
 }
 
-function formatGpuStepUp(prevGpu: Gpu, gpu: Gpu): string {
+function formatGpuStepUp(prevGpu: Gpu | null, gpu: Gpu | null): string {
+  if (!prevGpu && !gpu) return 'the same integrated graphics';
+  if (!prevGpu && gpu) return `a dedicated ${gpu.name} graphics card`;
+  if (prevGpu && !gpu) return 'integrated graphics instead of a graphics card';
+  if (!prevGpu || !gpu) return 'a different GPU';
   if (gpu.id === prevGpu.id) return 'the same GPU';
   const vramDelta = gpu.vram_gb - prevGpu.vram_gb;
   if (vramDelta > 0) return `+${vramDelta}GB more VRAM`;
@@ -229,10 +241,10 @@ function formatCpuStepUp(prevCpu: Cpu, cpu: Cpu): string {
  */
 export function getTierComparisons(picks: TierPick[]): TierComparison[] {
   return picks.map((p, i) => {
-    const totalCost = p.gpu.price_usd + p.cpu.price_usd;
+    const totalCost = (p.gpu?.price_usd ?? 0) + p.cpu.price_usd;
     if (i === 0) return { ...p, totalCost };
     const prev = picks[i - 1];
-    const prevTotal = prev.gpu.price_usd + prev.cpu.price_usd;
+    const prevTotal = (prev.gpu?.price_usd ?? 0) + prev.cpu.price_usd;
     return {
       ...p,
       totalCost,
@@ -264,10 +276,12 @@ export function useCaseItemListJsonLd(useCase: UseCase, picks: TierPick[]) {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
     name: useCase.title,
-    itemListElement: picks.flatMap((p, i) => [
-      { '@type': 'ListItem', position: i * 2 + 1, name: p.gpu.name, url: `${SITE_URL}/builder?gpu=${p.gpu.id}` },
-      { '@type': 'ListItem', position: i * 2 + 2, name: p.cpu.name, url: `${SITE_URL}/builder?cpu=${p.cpu.id}` },
-    ]),
+    itemListElement: picks
+      .flatMap((p) => [
+        ...(p.gpu ? [{ name: p.gpu.name, url: `${SITE_URL}/builder?gpu=${p.gpu.id}` }] : []),
+        { name: p.cpu.name, url: `${SITE_URL}/builder?cpu=${p.cpu.id}` },
+      ])
+      .map((item, i) => ({ '@type': 'ListItem', position: i + 1, ...item })),
   };
 }
 

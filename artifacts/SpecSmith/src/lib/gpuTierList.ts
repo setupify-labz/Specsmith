@@ -1,7 +1,10 @@
 import gpuData from '../data/gpus.json';
 import { fpsPer100, type MatchupGpu } from './matchups';
+import { catalogLabel, isRecommendable } from './catalogLifecycle';
 
-const gpus = gpuData as MatchupGpu[];
+// A tier list is a buying guide, so parts the catalog audit marks invalid
+// (e.g. the laptop-only "RTX 4050") are left out. Older parts stay, labelled.
+const gpus = (gpuData as MatchupGpu[]).filter((gpu) => catalogLabel(gpu.id) !== 'invalid');
 
 export type TierId = 'S' | 'A' | 'B' | 'C' | 'D';
 
@@ -54,8 +57,11 @@ export function getGpuTiers(): Tier[] {
     const members = withValue
       .filter(g => tierFor(g.gpu.benchmark_score) === id)
       .sort((a, b) => b.gpu.price_usd - a.gpu.price_usd);
-    const bestValueId = members.length
-      ? members.reduce((best, g) => (g.valuePer100 > best.valuePer100 ? g : best), members[0]).gpu.id
+    // The best-value badge is a recommendation, so only eligible parts can win
+    // it; an unaudited or ineligible part never does (fails closed).
+    const contenders = members.filter(g => isRecommendable(g.gpu.id));
+    const bestValueId = contenders.length
+      ? contenders.reduce((best, g) => (g.valuePer100 > best.valuePer100 ? g : best), contenders[0]).gpu.id
       : null;
     return {
       id,

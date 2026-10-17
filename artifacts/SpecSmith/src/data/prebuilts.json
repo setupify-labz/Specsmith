@@ -19,9 +19,9 @@
       "motherboard": "b550tom",
       "ram": "cr16ddr4",
       "storage": "sgbar2",
-      "psu": "crm750",
+      "psu": "msiaga850",
       "case": "nzxth510",
-      "cooler": "cmh212"
+      "cooler": "thrpa120se"
     }
   },
   {
@@ -42,7 +42,7 @@
       "gpu": "rtx4060ti",
       "cpu": "i5-13600k",
       "motherboard": "b760mds3h",
-      "ram": "gr32ddr4",
+      "ram": "cv32ddr4",
       "storage": "wdblack1",
       "psu": "evga850",
       "case": "cor4000d",
@@ -71,7 +71,7 @@
       "storage": "s990pro2",
       "psu": "sea1000",
       "case": "lio11",
-      "cooler": "corh100i"
+      "cooler": "nzxtx53"
     }
   },
   {
@@ -91,12 +91,12 @@
     "parts": {
       "gpu": "rtx4080s",
       "cpu": "r9-7950x3d",
-      "motherboard": "x670ecross",
+      "motherboard": "x670emeg",
       "ram": "gz32ddr5",
       "storage": "wdblack2",
       "psu": "corhx1200",
       "case": "fdtorrent",
-      "cooler": "corh150i"
+      "cooler": "thrfs360"
     }
   },
   {
@@ -121,7 +121,7 @@
       "storage": "wdblack2",
       "psu": "tt1650",
       "case": "bqdbp900",
-      "cooler": "corh150i"
+      "cooler": "thrfs360"
     }
   }
 ]

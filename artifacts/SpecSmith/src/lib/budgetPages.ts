@@ -2,6 +2,7 @@ import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import type { RouteMeta } from './seo';
 import { SITE_URL } from './seo';
+import { recommendable } from './catalogLifecycle';
 
 export interface BudgetPart {
   id: string;
@@ -57,8 +58,11 @@ export interface BudgetPick {
   detail: string;
 }
 
+// Picks are buying recommendations: only parts the catalog audit lists as
+// eligible. The full ranked table (getPartsUnderBudget) still lists every
+// tracked part, with its catalog label.
 export function getBudgetPicks(category: 'gpu' | 'cpu', tier: BudgetTier): BudgetPick[] {
-  const parts = getPartsUnderBudget(category, tier.maxPrice);
+  const parts = recommendable(getPartsUnderBudget(category, tier.maxPrice));
   if (parts.length === 0) return [];
 
   const kind = category === 'gpu' ? 'GPU' : 'CPU';

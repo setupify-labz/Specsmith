@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from './MotionLite';
 import { ChevronRight, ExternalLink, RotateCcw, Sparkles } from 'lucide-react';
 import { QUIZ_USE_CASES, getQuizTiers, getQuizResult } from '../lib/quiz';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
+import CatalogLabelNote from './CatalogLabelNote';
 
 interface QuizFlowProps {
   lockedUseCase?: string;
@@ -80,13 +81,23 @@ export default function QuizFlow({ lockedUseCase }: QuizFlowProps) {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              {!result.gpu && (
+                <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}>
+                  <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>Graphics</p>
+                  <p className="font-bold text-sm" style={{ color: 'var(--ff-text)' }}>Built into the CPU</p>
+                  <p className="text-xs mt-2" style={{ color: 'var(--ff-text-2)' }}>
+                    {result.cpu.integrated_graphics ?? 'Integrated graphics'}. No separate graphics card needed for this kind of work.
+                  </p>
+                </div>
+              )}
               {([
-                { label: 'GPU', part: result.gpu, category: 'gpu' as const },
+                ...(result.gpu ? [{ label: 'GPU', part: result.gpu, category: 'gpu' as const }] : []),
                 { label: 'CPU', part: result.cpu, category: 'cpu' as const },
               ]).map(({ label, part, category }) => (
                 <div key={label} className="rounded-xl p-4" style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}>
                   <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>{label}</p>
                   <p className="font-bold text-sm" style={{ color: 'var(--ff-text)' }}>{part.name}</p>
+                  <CatalogLabelNote id={part.id} />
                   <div className="flex items-center gap-2 text-xs mt-2 flex-wrap">
                     <span className="font-bold" style={{ color: 'var(--ff-text)' }}>${part.price_usd.toLocaleString()}</span>
                     <a href={getAffiliateUrl(buildPartQuery(part.name, part.brand, category))} target="_blank" rel="noopener noreferrer"
@@ -103,7 +114,7 @@ export default function QuizFlow({ lockedUseCase }: QuizFlowProps) {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link to={`/builder?gpu=${result.gpu.id}&cpu=${result.cpu.id}`}
+              <Link to={result.gpu ? `/builder?gpu=${result.gpu.id}&cpu=${result.cpu.id}` : `/builder?cpu=${result.cpu.id}`}
                 className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90"
                 style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
                 Load in Builder <ChevronRight size={14} />

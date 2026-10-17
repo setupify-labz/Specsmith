@@ -2,6 +2,7 @@ import gamesData from '../data/games.json';
 import { estimateFpsForBuild } from './fps';
 import { getMatchupGpu, getMatchupCpu, fpsPer100, type MatchupGpu } from './matchups';
 import type { RouteMeta } from './seo';
+import { isRecommendable } from './catalogLifecycle';
 
 export interface PageGame {
   id: string;
@@ -107,7 +108,10 @@ export interface GamePick {
  * 60 FPS at 4K, varies a lot between Valorant and Alan Wake 2.
  */
 export function getGamePicks(game: PageGame): GamePick[] {
-  const rows = getGameGpuRows(game);
+  // Picks are buying recommendations: only GPUs the catalog audit lists as
+  // eligible. The page's comparison table still shows every row.
+  const rows = getGameGpuRows(game).filter(r => isRecommendable(r.gpu.id));
+  if (rows.length === 0) return [];
   const picks: GamePick[] = [];
 
   const king = rows.reduce((best, r) => (r.fps4k > best.fps4k ? r : best), rows[0]);

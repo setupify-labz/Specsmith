@@ -8,6 +8,7 @@ import {
 import PartCard from './PartCard';
 import { buildPartQuery } from '../lib/fps';
 import { comparablePriceAmount, describePartPrice, type PartPrice } from '../lib/partPrice';
+import { useCatalogLifecycle } from '../hooks/useCatalogLifecycle';
 
 type SortKey = 'price' | 'performance' | 'value';
 
@@ -83,6 +84,7 @@ export default function PartSelector({
   category, label, parts, selectedId, onSelect, getSpecs,
   defaultOpen = false, recommendedIds = [], openSignal, showShopping = true, getPrice,
 }: PartSelectorProps) {
+  const lifecycle = useCatalogLifecycle();
   const priceOf = (part: Part): PartPrice | undefined => (showShopping && getPrice ? getPrice(part) : undefined);
   const amountOf = (part: Part): number | null => comparablePriceAmount(priceOf(part));
   const [open, setOpen] = useState(defaultOpen);
@@ -177,7 +179,11 @@ export default function PartSelector({
       .map((p) => ({ part: p, amount: amountOf(p) }))
       .filter((entry): entry is { part: Part & { benchmark_score: number }; amount: number } =>
         typeof entry.part.benchmark_score === 'number' && entry.amount !== null && entry.amount > 0,
-      );
+      )
+      // Accolades are recommendations: only parts the catalog audit lists as
+      // eligible can win one. Unknown ids, and every id until the list has
+      // loaded, fail closed.
+      .filter((entry) => lifecycle?.isRecommendable(entry.part.id) ?? false);
     if (withScores.length === 0) return { bestValueId: null, bestPerformanceId: null };
     const bestValue = withScores.reduce((best, entry) =>
       (entry.part.benchmark_score / entry.amount) > (best.part.benchmark_score / best.amount) ? entry : best
@@ -187,7 +193,7 @@ export default function PartSelector({
       p.benchmark_score > best.benchmark_score ? p : best
     );
     return { bestValueId: bestValue.id, bestPerformanceId: bestPerformance.id };
-  }, [parts, category, showShopping, getPrice]);
+  }, [parts, category, showShopping, getPrice, lifecycle]);
 
   const selectedPart = parts.find(p => p.id === selectedId);
   const selectedPrice = selectedPart && showShopping ? describePartPrice(priceOf(selectedPart)) : null;
@@ -331,6 +337,10 @@ export default function PartSelector({
                         undefined
                       }
                       specs={getSpecs(part)}
+                      catalogNotice={lifecycle?.catalogLabelText(part.id) ?? null}
+                      // A verified retailer listing keeps its link; a catalogue
+                      // part gets one only once the audit lists it as eligible.
+                      retailLinks={Boolean(part.affiliateUrl) || (lifecycle?.isRecommendable(part.id) ?? false)}
                       tier={part.tier}
                       showShopping={showShopping}
                       onSelect={(id) => onSelect(id === selectedId ? null : id)}

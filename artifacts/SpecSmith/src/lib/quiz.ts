@@ -4,9 +4,10 @@ import gamesData from '../data/games.json';
 import { getUseCase, getTierPicks } from './useCaseBuilds';
 import { estimateFpsForBuild } from './fps';
 import type { RouteMeta } from './seo';
+import { recommendable } from './catalogLifecycle';
 
 interface Gpu { id: string; name: string; brand: string; price_usd: number; vram_gb: number; benchmark_score: number; }
-interface Cpu { id: string; name: string; brand: string; price_usd: number; cores: number; threads: number; benchmark_score: number; }
+interface Cpu { id: string; name: string; brand: string; price_usd: number; cores: number; threads: number; benchmark_score: number; integrated_graphics?: string | null; }
 // Richer variants for the FPS calculation only — QuizResult.gpu/cpu stay
 // typed as the narrower Gpu/Cpu above so both this module's own picks and
 // useCaseBuilds.ts's TierPick.gpu/cpu (which don't carry *_multiplier)
@@ -84,7 +85,8 @@ export function getQuizTiers(useCaseSlug: string): QuizTierOption[] {
 export interface QuizResult {
   useCase: QuizUseCase;
   tierLabel: string;
-  gpu: Gpu;
+  /** null when the build uses the CPU's integrated graphics. */
+  gpu: Gpu | null;
   cpu: Cpu;
   /** Estimated average FPS across all tracked games at 1440p High — only
    * set for the "gaming" use case, where that's the actual picking
@@ -100,8 +102,8 @@ export function getQuizResult(useCaseSlug: string, tierIndex: number): QuizResul
   if (useCaseSlug === 'gaming') {
     const tier = GAMING_TIERS[tierIndex];
     if (!tier) return null;
-    const gpu = bestByScore(gpus.filter((g) => g.price_usd <= tier.maxGpuPrice));
-    const cpu = bestByScore(cpus.filter((c) => c.price_usd <= tier.maxCpuPrice));
+    const gpu = bestByScore(recommendable(gpus).filter((g) => g.price_usd <= tier.maxGpuPrice));
+    const cpu = bestByScore(recommendable(cpus).filter((c) => c.price_usd <= tier.maxCpuPrice));
     if (!gpu || !cpu) return null;
     return { useCase, tierLabel: tier.label, gpu, cpu, avgFps: averageGamingFps(gpu, cpu) };
   }

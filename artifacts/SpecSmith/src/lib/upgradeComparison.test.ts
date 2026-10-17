@@ -18,10 +18,12 @@ import {
   getUpgradeComparisons,
   getClosestUpgradeComparisons,
   getUpgradeGpu,
+  getUpgradeGpus,
   averageFps,
   UPGRADE_COMPARISON_PREVIEW_LIMIT,
 } from './upgradeCalculator';
 import { UPGRADE_PAGES, getUpgradeIntro, getUpgradePageMeta } from './upgradePages';
+import { catalogLabel } from './catalogLifecycle';
 
 /** Low-, mid- and high-end, plus the top of the stack. */
 const REPRESENTATIVE = ['rx6400', 'rx6600', 'rtx4070', 'rtx5080'] as const;
@@ -95,7 +97,7 @@ describe('the comparison is complete and ordered by modelled difference', () => 
 
     // COMPLETENESS, which the old shortlist could not claim: it kept one card
     // per tier and capped the result at six, so cards were dropped silently.
-    const expected = (gpuData as Array<{ id: string }>)
+    const expected = getUpgradeGpus()
       .filter((g) => g.id !== id && averageFps(getUpgradeGpu(g.id)!) > base)
       .map((g) => g.id)
       .sort();
@@ -107,11 +109,21 @@ describe('the comparison is complete and ordered by modelled difference', () => 
   });
 
   it('is empty for the fastest card SpecSmith models, without throwing', () => {
-    const fastest = (gpuData as Array<{ id: string }>)
+    const fastest = getUpgradeGpus()
       .map((g) => ({ id: g.id, fps: averageFps(getUpgradeGpu(g.id)!) }))
       .reduce((best, g) => (g.fps > best.fps ? g : best));
     expect(getUpgradeComparisons(fastest.id)).toEqual([]);
     expect(getUpgradeIntro(getUpgradeGpu(fastest.id)!)).toMatch(/No GPU SpecSmith tracks/i);
+  });
+
+  it('compares against every tracked GPU except parts the catalog audit marks invalid', () => {
+    // Completeness still holds: the only cards left out are ones that are not
+    // real retail products (the laptop-only "RTX 4050"). Age removes nothing.
+    const excluded = (gpuData as Array<{ id: string }>)
+      .map((g) => g.id)
+      .filter((gpuId) => !getUpgradeGpus().some((g) => g.id === gpuId));
+    expect(excluded).toEqual(['rtx4050']);
+    for (const gpuId of excluded) expect(catalogLabel(gpuId)).toBe('invalid');
   });
 
   it('an unknown GPU id yields nothing rather than throwing', () => {
@@ -155,8 +167,11 @@ describe('the shared copy recommends nothing', () => {
 });
 
 describe('URLs and canonical metadata are untouched', () => {
-  it('all 57 guides keep their slug, and each canonical is its own URL', () => {
-    expect(UPGRADE_PAGES).toHaveLength(57);
+  it('all 56 guides keep their slug, and each canonical is its own URL', () => {
+    // 56, not 57: /upgrade/rtx-4050 was retired deliberately (no desktop RTX
+    // 4050 exists) and now 301s to /upgrade. retiredRoutes.test.ts guards that
+    // redirect, so this count still catches any accidental removal.
+    expect(UPGRADE_PAGES).toHaveLength(56);
     for (const page of UPGRADE_PAGES) {
       const meta = getUpgradePageMeta(page);
       expect(meta.path).toBe(`/upgrade/${page.slug}`);
@@ -175,7 +190,7 @@ describe('URLs and canonical metadata are untouched', () => {
     }
   });
 
-  it('titles and descriptions stay unique across all 57 pages', () => {
+  it('titles and descriptions stay unique across all 56 pages', () => {
     const titles = UPGRADE_PAGES.map((p) => getUpgradePageMeta(p).title);
     const descriptions = UPGRADE_PAGES.map((p) => getUpgradePageMeta(p).description);
     expect(new Set(titles).size).toBe(titles.length);

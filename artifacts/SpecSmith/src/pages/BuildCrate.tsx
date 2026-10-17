@@ -8,7 +8,7 @@ import {
 import {
   CRATE_CATEGORY_ORDER, RARITY_STYLE, rollMotherboard, rollCpu, rollRam, rollGpu, rollStorage, rollCase, rollCooler, rollPsu,
   getMotherboardPool, getCpuPool, getRamPool, getGpuPool, getStoragePool, getCasePool, getCoolerPool, getPsuPool,
-  finalizeCrateBuild, type CrateBuild, type CrateRarity, type RolledPart,
+  finalizeCrateBuild, setCrateEligibility, type CrateBuild, type CrateRarity, type RolledPart,
   type CrateMotherboard, type CrateCpu, type CrateRam, type CrateGpu, type CrateStorage, type CrateCase, type CrateCooler, type CratePsu,
 } from '../lib/buildCrate';
 import { getBestPull, recordPullIfBest, type BestPull } from '../lib/crateBestPull';
@@ -26,6 +26,8 @@ import { getRouteMeta } from '../lib/seo';
 import CompatibilityBanner from '../components/CompatibilityBanner';
 import CratePullsFeed from '../components/CratePullsFeed';
 import PageGlow from '../components/PageGlow';
+import { cpuPeakPower } from '../lib/cpuPower';
+import { useCatalogLifecycle } from '../hooks/useCatalogLifecycle';
 
 // How dramatic the landing effect gets, escalating per rarity tier.
 const RARITY_INTENSITY: Record<CrateRarity, { particles: number; distance: number; shake: number; rays: boolean }> = {
@@ -256,6 +258,12 @@ const crateFaqJsonLd = {
 
 export default function BuildCrate() {
   useSeo(getRouteMeta('/crate'));
+  // Crate pulls may only use eligible parts; the list loads after first paint
+  // and the open button stays disabled until it has (fails closed).
+  const catalogLifecycle = useCatalogLifecycle();
+  useEffect(() => {
+    setCrateEligibility(catalogLifecycle ? catalogLifecycle.isRecommendable : null);
+  }, [catalogLifecycle]);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -299,7 +307,7 @@ export default function BuildCrate() {
   };
 
   const openNext = () => {
-    if (!nextCategory || pending) return;
+    if (!nextCategory || pending || !catalogLifecycle) return;
     playSpinWhoosh();
     const key = nextCategory.key;
 
@@ -323,10 +331,10 @@ export default function BuildCrate() {
       const r = rollCase(revealed.motherboard!.part.form_factor, revealed.gpu!.part.length_mm);
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.case = r; } });
     } else if (key === 'cooler') {
-      const r = rollCooler(revealed.case!.part.cooler_clearance_mm, revealed.cpu!.part.tdp_watts, revealed.cpu!.part.socket);
+      const r = rollCooler(revealed.case!.part.cooler_clearance_mm, cpuPeakPower(revealed.cpu!.part)?.watts, revealed.cpu!.part.socket);
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.cooler = r; } });
     } else {
-      const r = rollPsu(revealed.gpu!.part.tdp_watts, revealed.cpu!.part.tdp_watts);
+      const r = rollPsu(revealed.gpu!.part.tdp_watts, cpuPeakPower(revealed.cpu!.part)?.watts);
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.psu = r; } });
     }
   };
@@ -538,6 +546,8 @@ export default function BuildCrate() {
           <div className="flex justify-center mb-10">
             <motion.button
               onClick={openNext}
+              disabled={!catalogLifecycle}
+              aria-busy={!catalogLifecycle}
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
               className="flex flex-col items-center gap-3 px-10 py-8 rounded-3xl font-black text-white"

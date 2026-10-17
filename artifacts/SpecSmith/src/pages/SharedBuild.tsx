@@ -4,7 +4,7 @@ import { motion } from '../components/MotionLite';
 import { Cpu, ExternalLink, Zap, ArrowRight } from 'lucide-react';
 import { decodeBuild } from '../lib/sharing';
 import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl } from '../lib/fps';
-import { getPartName, getPartPrice, categoryLabels, getPartSearchQuery } from '../lib/prebuilts';
+import { getPartPrice, categoryLabels } from '../lib/prebuilts';
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import PageGlow from '../components/PageGlow';
+import { buildPartRows } from '../lib/buildPartRows';
 
 interface GPU { id: string; name: string; price_usd: number; tier: number; benchmark_score: number; gpu_multiplier: number; [key: string]: unknown; }
 interface CPU { id: string; name: string; price_usd: number; tier: number; benchmark_score: number; cpu_multiplier: number; [key: string]: unknown; }
@@ -82,6 +83,8 @@ export default function SharedBuild() {
   const customParts = decoded.customParts;
   const totalCost = partEntries.reduce((sum, [cat, id]) => sum + getPartPrice(cat, id), 0)
     + customParts.reduce((sum, c) => sum + c.price, 0);
+  // Buy links only for eligible parts (catalog audit, fails closed).
+  const partRows = buildPartRows(Object.fromEntries(partEntries));
 
   const loadInBuilder = () => {
     const qs = Object.entries(build).filter(([,v]) => v).map(([k,v]) => `${k}=${v}`).join('&');
@@ -115,24 +118,31 @@ export default function SharedBuild() {
                 style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
                 <h2 className="font-bold mb-4" style={{ color: 'var(--ff-text)' }}>Components</h2>
                 <div className="space-y-2">
-                  {partEntries.map(([cat, id]) => (
-                    <div key={cat} className="flex items-center justify-between py-2"
+                  {partRows.map((row) => (
+                    <div key={row.category} className="flex items-center justify-between py-2"
                       style={{ borderBottom: '1px solid var(--ff-border)' }}>
-                      <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--ff-text-3)' }}>{categoryLabels[cat] ?? cat}</span>
+                      <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--ff-text-3)' }}>{categoryLabels[row.category] ?? row.category}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium" style={{ color: 'var(--ff-text)' }}>
-                          {getPartName(cat, id)}
+                          {row.name}
                         </span>
-                        <a href={getAffiliateUrl(getPartSearchQuery(cat, id))} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-0.5 text-[10px] font-semibold hover:opacity-80"
-                          style={{ color: 'var(--ff-accent-text)' }}>
-                          Amazon <ExternalLink size={9} />
-                        </a>
-                        <a href={getNeweggUrl(getPartSearchQuery(cat, id))} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-0.5 text-[10px] font-semibold hover:opacity-80"
-                          style={{ color: 'var(--ff-newegg)' }}>
-                          Newegg <ExternalLink size={9} />
-                        </a>
+                        {row.label && (
+                          <span className="text-[10px]" style={{ color: 'var(--ff-text-3)' }}>{row.label}</span>
+                        )}
+                        {row.buyQuery && (
+                          <>
+                            <a href={getAffiliateUrl(row.buyQuery)} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-0.5 text-[10px] font-semibold hover:opacity-80"
+                              style={{ color: 'var(--ff-accent-text)' }}>
+                              Amazon <ExternalLink size={9} />
+                            </a>
+                            <a href={getNeweggUrl(row.buyQuery)} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-0.5 text-[10px] font-semibold hover:opacity-80"
+                              style={{ color: 'var(--ff-newegg)' }}>
+                              Newegg <ExternalLink size={9} />
+                            </a>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}

@@ -5,9 +5,10 @@ import gamesData from '../data/games.json';
 import { estimateFpsForBuild } from './fps';
 import type { RouteMeta } from './seo';
 import { SITE_URL } from './seo';
+import { recommendable } from './catalogLifecycle';
 
 interface Gpu { id: string; name: string; brand: string; price_usd: number; length_mm: number; benchmark_score: number; gpu_multiplier: number; [key: string]: unknown; }
-interface Cpu { id: string; name: string; brand: string; price_usd: number; socket: string; tdp_watts: number; benchmark_score: number; cpu_multiplier: number; [key: string]: unknown; }
+interface Cpu { id: string; name: string; brand: string; price_usd: number; socket: string; base_power_watts: number; max_turbo_power_watts: number | null; benchmark_score: number; cpu_multiplier: number; [key: string]: unknown; }
 interface Game { id: string; name: string; gpu_bound?: number; base_fps: Record<string, Record<string, number>>; [key: string]: unknown; }
 interface CaseData { id: string; name: string; price_usd: number; gpu_clearance_mm: number; cooler_clearance_mm: number; motherboard_support: string[]; }
 interface Motherboard { id: string; name: string; price_usd: number; socket: string; form_factor: string; }
@@ -63,7 +64,7 @@ export interface SffPick {
 
 function pickGpuForCase(c: CaseData, maxPrice: number, margin: number): Gpu {
   const maxLength = c.gpu_clearance_mm - margin;
-  return [...gpus]
+  return recommendable(gpus)
     .filter(g => g.length_mm <= maxLength && g.price_usd <= maxPrice)
     .sort((a, b) => b.benchmark_score - a.benchmark_score)[0];
 }

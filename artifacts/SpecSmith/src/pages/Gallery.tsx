@@ -3,15 +3,14 @@ import { Link } from 'react-router-dom';
 import { motion } from '../components/MotionLite';
 import { Trophy, Eye, ExternalLink, Cpu, Users, Sparkles } from 'lucide-react';
 import { fetchRecentBuilds, fetchTopBuilds, recordBuildView } from '../lib/gallery';
+import { buildPartRows } from '../lib/buildPartRows';
 import { isGalleryEnabled } from '../lib/supabase';
-import { getPartName, getPartSearchQuery, categoryLabels } from '../lib/prebuilts';
+import { categoryLabels } from '../lib/prebuilts';
 import { getAffiliateUrl, getNeweggUrl } from '../lib/fps';
 import type { PublicBuildRow } from '../lib/supabase';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import PageGlow from '../components/PageGlow';
-
-const PART_CATEGORIES = ['gpu', 'cpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'keyboard', 'mouse', 'headset'];
 
 const galleryFaqs = [
   {
@@ -41,9 +40,7 @@ function galleryFaqJsonLd() {
 }
 
 function BuildCard({ build, expanded, onToggle }: { build: PublicBuildRow; expanded: boolean; onToggle: () => void }) {
-  const partEntries = PART_CATEGORIES
-    .map(cat => [cat, build.build_state[cat] ?? ''] as [string, string])
-    .filter(([, id]) => id);
+  const partRows = buildPartRows(build.build_state);
 
   return (
     <motion.div
@@ -87,16 +84,21 @@ function BuildCard({ build, expanded, onToggle }: { build: PublicBuildRow; expan
 
       {expanded ? (
         <div className="space-y-1.5 mb-3">
-          {partEntries.map(([cat, id]) => (
-            <div key={cat} className="flex items-center justify-between gap-2 py-1.5" style={{ borderBottom: '1px solid var(--ff-border)' }}>
-              <span className="text-[10px] uppercase tracking-wider flex-shrink-0" style={{ color: 'var(--ff-text-3)' }}>{categoryLabels[cat] ?? cat}</span>
+          {partRows.map((row) => (
+            <div key={row.category} className="flex items-center justify-between gap-2 py-1.5" style={{ borderBottom: '1px solid var(--ff-border)' }}>
+              <span className="text-[10px] uppercase tracking-wider flex-shrink-0" style={{ color: 'var(--ff-text-3)' }}>{categoryLabels[row.category] ?? row.category}</span>
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-xs font-medium truncate" style={{ color: 'var(--ff-text)' }}>{getPartName(cat, id)}</span>
-                <a href={getAffiliateUrl(getPartSearchQuery(cat, id))} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-0.5 text-[10px] font-semibold hover:opacity-80 flex-shrink-0"
-                  style={{ color: 'var(--ff-accent-text)' }}>
-                  Buy <ExternalLink size={9} />
-                </a>
+                <span className="text-xs font-medium truncate" style={{ color: 'var(--ff-text)' }}>{row.name}</span>
+                {row.label && (
+                  <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--ff-text-3)' }}>{row.label}</span>
+                )}
+                {row.buyQuery && (
+                  <a href={getAffiliateUrl(row.buyQuery)} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-0.5 text-[10px] font-semibold hover:opacity-80 flex-shrink-0"
+                    style={{ color: 'var(--ff-accent-text)' }}>
+                    Buy <ExternalLink size={9} />
+                  </a>
+                )}
               </div>
             </div>
           ))}
