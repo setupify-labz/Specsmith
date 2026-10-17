@@ -2,6 +2,8 @@
 
 Last evidence review: 2026-09-03
 
+For the full collection of product ideas and long-term direction, see [the living product blueprint](docs/PRODUCT_BLUEPRINT.md). This roadmap and scoped issues govern current work; the blueprint does not mark ideas approved or complete.
+
 ## North star
 
 Make SpecSmith the easiest trustworthy place for a beginner to choose a compatible gaming PC for their budget, understand expected performance and uncertainty, and purchase the correct parts.
